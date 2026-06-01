@@ -43,7 +43,7 @@ Site A owns CS student fragments and CS enrollments. Site B owns non-CS student 
 
 ## UI Layout
 
-The WPF screen contains a SQL editor at the top, initial and optimized tree panels in the middle, and tabbed transformation/distributed/data/health information at the bottom. The vertical regions and tree columns are resizable with splitters. JSON is not shown in the main workflow; it is only the internal API response format.
+The WPF screen contains a SQL editor at the top, initial and optimized tree panels in the middle, and tabbed transformation/distributed/data/result/health information at the bottom. The vertical regions and tree columns are resizable with splitters. JSON is not shown in the main workflow; it is only the internal API response format.
 
 ## Failure Handling
 

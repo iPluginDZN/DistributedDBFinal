@@ -50,7 +50,8 @@ app.MapPost("/api/query/analyze", async (AnalyzeQueryRequest request, IHttpClien
             Transformations = AlgebraBuilder.BuildTransformations(parsed),
             SiteHealth = health,
             DistributedPlan = DistributedPlanner.Build(health),
-            DataPreview = AcademicDataset.DataPreviewForPlan(health.Where(site => site.Online).Select(site => site.SiteId).ToList())
+            DataPreview = AcademicDataset.DataPreviewForPlan(health.Where(site => site.Online).Select(site => site.SiteId).ToList()),
+            JoinedResult = AcademicDataset.JoinedResultForQuery(parsed, health.Where(site => site.Online).Select(site => site.SiteId).ToList())
         };
 
         return Results.Ok(response);

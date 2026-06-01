@@ -21,7 +21,7 @@ Show:
 dotnet run --project src/AcademicRecords.App/AcademicRecords.App.csproj
 ```
 
-Point out the SQL editor, initial tree panel, optimized tree panel, transformation analysis, distributed plan, data preview, site health, and resizable splitters.
+Point out the SQL editor, initial tree panel, optimized tree panel, transformation analysis, distributed plan, data preview, joined result, site health, and resizable splitters.
 
 ## 3. Analyze Query
 

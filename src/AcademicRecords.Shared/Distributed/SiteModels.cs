@@ -24,6 +24,12 @@ public sealed record DataPreviewItem(
     int RowCount,
     string SampleRows);
 
+public sealed class JoinedResultTable
+{
+    public List<string> Columns { get; set; } = [];
+    public List<Dictionary<string, string>> Rows { get; set; } = [];
+}
+
 public sealed class DistributedPlan
 {
     public List<DistributedPlanItem> Items { get; set; } = [];

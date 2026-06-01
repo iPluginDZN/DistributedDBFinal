@@ -13,6 +13,7 @@ public sealed class AnalyzeQueryResponse
     public DistributedPlan DistributedPlan { get; set; } = new();
     public List<SiteHealth> SiteHealth { get; set; } = [];
     public List<DataPreviewItem> DataPreview { get; set; } = [];
+    public JoinedResultTable JoinedResult { get; set; } = new();
 }
 
 public sealed class ParsedAcademicQuery

@@ -6,16 +6,22 @@ INSERT INTO Students VALUES
 (31, 'Hoa Vu', 'Business', 2),
 (32, 'Khanh Do', 'Math', 3),
 (33, 'Linh Ho', 'Physics', 4),
-(34, 'Minh Bui', 'Literature', 1);
+(34, 'Minh Bui', 'Literature', 1),
+(35, 'Nhi Phan', 'Business', 3),
+(36, 'Oanh Dang', 'Math', 2);
 
 INSERT INTO Enrollments VALUES
 (31, 31, 104, '2026S', 'A'),
 (32, 32, 102, '2026S', 'B'),
 (33, 33, 105, '2025F', 'C+'),
-(34, 34, 101, '2026S', 'B+');
+(34, 34, 101, '2026S', 'B+'),
+(35, 35, 101, '2026S', 'A-'),
+(36, 36, 106, '2026S', 'B');
 
 INSERT INTO Professors VALUES
 (201, 'Prof. Mai Nguyen', 'CS'),
 (202, 'Prof. Quang Tran', 'CS'),
 (203, 'Prof. Sara Pham', 'CS'),
-(204, 'Prof. Nam Le', 'Business');
+(204, 'Prof. Nam Le', 'Business'),
+(205, 'Prof. Yen Vo', 'Physics'),
+(206, 'Prof. Long Do', 'Math');

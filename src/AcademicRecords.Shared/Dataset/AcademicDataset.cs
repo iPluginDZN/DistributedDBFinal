@@ -1,4 +1,5 @@
 using AcademicRecords.Shared.Distributed;
+using AcademicRecords.Shared.Query;
 
 namespace AcademicRecords.Shared.Dataset;
 
@@ -75,6 +76,261 @@ public static class AcademicDataset
 
         return previews;
     }
+
+    public static JoinedResultTable JoinedResultForQuery(ParsedAcademicQuery query, IReadOnlyCollection<string> onlineSites)
+    {
+        var online = onlineSites.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var columns = query.Projections.Select(GetProjectionLabel).ToList();
+        columns.Add("Source Sites");
+
+        var results =
+            from student in Students()
+            join enrollment in Enrollments() on student.StudentId equals enrollment.StudentId
+            join course in Courses() on enrollment.CourseId equals course.CourseId
+            join professor in Professors() on course.ProfessorId equals professor.ProfessorId
+            where RequiredSitesOnline(student, online)
+            where MatchesPredicates(query.Predicates, student, enrollment, course, professor)
+            select BuildProjectedRow(columns, query.Projections, student, enrollment, course, professor);
+
+        return new JoinedResultTable
+        {
+            Columns = columns,
+            Rows = results.ToList()
+        };
+    }
+
+    private static Dictionary<string, string> BuildProjectedRow(
+        IReadOnlyList<string> columns,
+        IReadOnlyList<string> projections,
+        StudentRow student,
+        EnrollmentRow enrollment,
+        CourseRow course,
+        ProfessorRow professor)
+    {
+        var row = new Dictionary<string, string>();
+
+        for (var i = 0; i < projections.Count; i++)
+        {
+            row[columns[i]] = GetProjectionValue(projections[i], student, enrollment, course, professor);
+        }
+
+        row["Source Sites"] = SourceSites(student);
+        return row;
+    }
+
+    private static string GetProjectionLabel(string projection)
+    {
+        var parts = SplitAlias(projection);
+        if (parts.Length == 2)
+        {
+            return parts[1];
+        }
+
+        return NormalizeProjectionExpression(parts[0]) switch
+        {
+            "s.student_id" => "student_id",
+            "s.name" => "student_name",
+            "s.department" => "student_department",
+            "s.year" => "student_year",
+            "e.enrollment_id" => "enrollment_id",
+            "e.student_id" => "enrollment_student_id",
+            "e.course_id" => "enrollment_course_id",
+            "e.term" => "term",
+            "e.grade" => "grade",
+            "c.course_id" => "course_id",
+            "c.title" => "course_title",
+            "c.credits" => "credits",
+            "c.professor_id" => "course_professor_id",
+            "p.professor_id" => "professor_id",
+            "p.name" => "professor_name",
+            "p.department" => "professor_department",
+            var expression => expression.Replace(".", "_")
+        };
+    }
+
+    private static string GetProjectionValue(
+        string projection,
+        StudentRow student,
+        EnrollmentRow enrollment,
+        CourseRow course,
+        ProfessorRow professor)
+    {
+        var expression = NormalizeProjectionExpression(SplitAlias(projection)[0]);
+
+        return expression switch
+        {
+            "s.student_id" => student.StudentId.ToString(),
+            "s.name" => student.Name,
+            "s.department" => student.Department,
+            "s.year" => student.Year.ToString(),
+            "e.enrollment_id" => enrollment.EnrollmentId.ToString(),
+            "e.student_id" => enrollment.StudentId.ToString(),
+            "e.course_id" => enrollment.CourseId.ToString(),
+            "e.term" => enrollment.Term,
+            "e.grade" => enrollment.Grade,
+            "c.course_id" => course.CourseId.ToString(),
+            "c.title" => course.Title,
+            "c.credits" => course.Credits.ToString(),
+            "c.professor_id" => course.ProfessorId.ToString(),
+            "p.professor_id" => professor.ProfessorId.ToString(),
+            "p.name" => professor.Name,
+            "p.department" => professor.Department,
+            _ => ""
+        };
+    }
+
+    private static string[] SplitAlias(string projection)
+    {
+        return projection.Split(" AS ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    private static string NormalizeProjectionExpression(string expression)
+    {
+        return expression.Trim().ToLowerInvariant();
+    }
+
+    private static bool RequiredSitesOnline(StudentRow student, ISet<string> onlineSites)
+    {
+        var studentSite = student.Department.Equals("CS", StringComparison.OrdinalIgnoreCase) ? "site-a" : "site-b";
+        return onlineSites.Contains(studentSite) && onlineSites.Contains("site-c");
+    }
+
+    private static string SourceSites(StudentRow student)
+    {
+        var studentSite = student.Department.Equals("CS", StringComparison.OrdinalIgnoreCase) ? "Site A" : "Site B";
+        return $"Students/Enrollments: {studentSite}; Courses/Professors: Site C";
+    }
+
+    private static bool MatchesPredicates(
+        IReadOnlyCollection<string> predicates,
+        StudentRow student,
+        EnrollmentRow enrollment,
+        CourseRow course,
+        ProfessorRow professor)
+    {
+        foreach (var predicate in predicates)
+        {
+            if (!MatchesPredicate(predicate, student, enrollment, course, professor))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool MatchesPredicate(
+        string predicate,
+        StudentRow student,
+        EnrollmentRow enrollment,
+        CourseRow course,
+        ProfessorRow professor)
+    {
+        var normalized = predicate.Trim().TrimEnd(';');
+
+        return normalized switch
+        {
+            var text when EqualsText(text, "s.department", student.Department) => true,
+            var text when EqualsText(text, "c.title", course.Title) => true,
+            var text when EqualsText(text, "p.department", professor.Department) => true,
+            var text when EqualsText(text, "e.term", enrollment.Term) => true,
+            var text when GreaterOrEqual(text, "c.credits", course.Credits) => true,
+            var text when GreaterOrEqual(text, "s.year", student.Year) => true,
+            _ => false
+        };
+    }
+
+    private static bool EqualsText(string predicate, string field, string value)
+    {
+        var prefix = field + " = ";
+        if (!predicate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var expected = predicate[prefix.Length..].Trim().Trim('\'');
+        return value.Equals(expected, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool GreaterOrEqual(string predicate, string field, int value)
+    {
+        var prefix = field + " >= ";
+        if (!predicate.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return int.TryParse(predicate[prefix.Length..].Trim(), out var expected) && value >= expected;
+    }
+
+    private static List<StudentRow> Students()
+    {
+        return
+        [
+            new(1, "An Nguyen", "CS", 2),
+            new(2, "Binh Tran", "CS", 3),
+            new(3, "Chi Le", "CS", 4),
+            new(4, "Dung Pham", "CS", 1),
+            new(5, "Eva Nguyen", "CS", 3),
+            new(6, "Finn Tran", "CS", 2),
+            new(31, "Hoa Vu", "Business", 2),
+            new(32, "Khanh Do", "Math", 3),
+            new(33, "Linh Ho", "Physics", 4),
+            new(34, "Minh Bui", "Literature", 1),
+            new(35, "Nhi Phan", "Business", 3),
+            new(36, "Oanh Dang", "Math", 2)
+        ];
+    }
+
+    private static List<EnrollmentRow> Enrollments()
+    {
+        return
+        [
+            new(1, 1, 101, "2026S", "A"),
+            new(2, 2, 101, "2026S", "B+"),
+            new(3, 3, 102, "2026S", "A-"),
+            new(4, 4, 103, "2025F", "B"),
+            new(5, 5, 103, "2025F", "A"),
+            new(6, 6, 104, "2026S", "B"),
+            new(31, 31, 104, "2026S", "A"),
+            new(32, 32, 102, "2026S", "B"),
+            new(33, 33, 105, "2025F", "C+"),
+            new(34, 34, 101, "2026S", "B+"),
+            new(35, 35, 101, "2026S", "A-"),
+            new(36, 36, 106, "2026S", "B")
+        ];
+    }
+
+    private static List<CourseRow> Courses()
+    {
+        return
+        [
+            new(101, "Distributed Databases", 3, 201),
+            new(102, "Query Optimization", 3, 202),
+            new(103, "Data Structures", 4, 203),
+            new(104, "Business Analytics", 3, 204),
+            new(105, "Modern Physics", 4, 205),
+            new(106, "Linear Algebra", 4, 206)
+        ];
+    }
+
+    private static List<ProfessorRow> Professors()
+    {
+        return
+        [
+            new(201, "Prof. Mai Nguyen", "CS"),
+            new(202, "Prof. Quang Tran", "CS"),
+            new(203, "Prof. Sara Pham", "CS"),
+            new(204, "Prof. Nam Le", "Business"),
+            new(205, "Prof. Yen Vo", "Physics"),
+            new(206, "Prof. Long Do", "Math")
+        ];
+    }
+
+    private sealed record StudentRow(int StudentId, string Name, string Department, int Year);
+    private sealed record EnrollmentRow(int EnrollmentId, int StudentId, int CourseId, string Term, string Grade);
+    private sealed record CourseRow(int CourseId, string Title, int Credits, int ProfessorId);
+    private sealed record ProfessorRow(int ProfessorId, string Name, string Department);
 
     private static void AddIfOnline(
         List<DataPreviewItem> previews,

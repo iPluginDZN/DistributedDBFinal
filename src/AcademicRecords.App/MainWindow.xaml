@@ -196,6 +196,23 @@
                 </DataGrid>
             </TabItem>
 
+            <TabItem Header="Joined Result">
+                <Grid>
+                    <TextBlock x:Name="JoinedResultEmptyText"
+                               Text="No joined records match this query, or a required site is offline."
+                               Foreground="#B45309"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Margin="10"
+                               Visibility="Collapsed" />
+                    <DataGrid x:Name="JoinedResultGrid"
+                              AutoGenerateColumns="True"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              EnableRowVirtualization="False" />
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Site Health">
                 <DockPanel>
                     <ItemsControl x:Name="WarningsList" DockPanel.Dock="Bottom" Margin="0,8,0,0">
