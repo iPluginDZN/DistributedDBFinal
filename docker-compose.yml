@@ -1,0 +1,58 @@
+services:
+  coordinator:
+    build:
+      context: .
+      dockerfile: src/AcademicRecords.Coordinator/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      Sites__SiteA: http://site-a:8080
+      Sites__SiteB: http://site-b:8080
+      Sites__SiteC: http://site-c:8080
+    ports:
+      - "5000:8080"
+    depends_on:
+      - site-a
+      - site-b
+      - site-c
+
+  site-a:
+    build:
+      context: .
+      dockerfile: src/AcademicRecords.Site/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      SITE_ID: site-a
+      SITE_NAME: Site A
+      DATABASE_PATH: /data/site_a.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "5101:8080"
+
+  site-b:
+    build:
+      context: .
+      dockerfile: src/AcademicRecords.Site/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      SITE_ID: site-b
+      SITE_NAME: Site B
+      DATABASE_PATH: /data/site_b.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "5102:8080"
+
+  site-c:
+    build:
+      context: .
+      dockerfile: src/AcademicRecords.Site/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      SITE_ID: site-c
+      SITE_NAME: Site C
+      DATABASE_PATH: /data/site_c.db
+    volumes:
+      - ./data:/data
+    ports:
+      - "5103:8080"

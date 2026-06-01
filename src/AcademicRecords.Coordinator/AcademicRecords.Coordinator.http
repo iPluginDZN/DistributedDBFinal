@@ -1,0 +1,6 @@
+@AcademicRecords.Coordinator_HostAddress = http://localhost:5177
+
+GET {{AcademicRecords.Coordinator_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
